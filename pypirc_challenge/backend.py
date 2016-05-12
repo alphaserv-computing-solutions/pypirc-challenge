@@ -15,7 +15,7 @@ import os
 import keyring
 from six.moves import configparser, urllib
 
-from pypirc_challenge import encrypt, decrypt
+from pypirc_challenge import encrypt, decrypt, generate_challenge
 
 
 class RequestMethodCompat(urllib.request.Request):
@@ -86,9 +86,13 @@ class ChallengeBackend(keyring.backend.KeyringBackend):
         if config_user != username:
             raise ValueError('Setting password only works for user: {}'.format(config_user))
         key = config.get(servicename, 'key')
-        with self._open_passuri(config.get(servicename, 'passuri'),
-                                data=encrypt(password, key),
-                                method='PUT'):
+        passuri = config.get(servicename, 'passuri')
+        if '{challenge}' in passuri:
+            challenge = generate_challenge()
+            passuri = passuri.format(challenge=challenge)
+        else:
+            challenge = None
+        with self._open_passuri(passuri, data=encrypt(password, key, challenge), method='PUT'):
             pass
 
     def get_password(self, servicename, username):
@@ -104,9 +108,15 @@ class ChallengeBackend(keyring.backend.KeyringBackend):
         if config_user != username:
             raise ValueError('Getting password only works for user: {}'.format(config_user))
         key = config.get(servicename, 'key')
-        with self._open_passuri(config.get(servicename, 'passuri')) as handle:
+        passuri = config.get(servicename, 'passuri')
+        if '{challenge}' in passuri:
+            challenge = generate_challenge()
+            passuri = passuri.format(challenge=challenge)
+        else:
+            challenge = None
+        with self._open_passuri(passuri) as handle:
             passblob = handle.read()
-        return decrypt(passblob, key)
+        return decrypt(passblob, key, challenge)
 
     def delete_password(self, servicename, username, password):
         """Sets a password if supported by remote
@@ -118,5 +128,8 @@ class ChallengeBackend(keyring.backend.KeyringBackend):
             config = self._read_pypirc()
         except IOError:
             return
-        with self._open_passuri(config.get(servicename, 'passuri'), method='DELETE'):
+        passuri = config.get(servicename, 'passuri')
+        if '{challenge}' in passuri:
+            passuri = passuri.format(challenge=generate_challenge())
+        with self._open_passuri(passuri, method='DELETE'):
             pass
