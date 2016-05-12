@@ -21,7 +21,7 @@ setup(
         'six'
     ],
     entry_points={
-        'keyring backends': [
+        'keyring.backends': [
             'pypirc_challenge=pypirc_challenge.ChallengeBackend',
         ]
     },
