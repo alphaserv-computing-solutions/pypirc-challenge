@@ -16,7 +16,9 @@ setup(
     author_email='alpha@alphaservcomputing.solutions',
     license='MIT',
     install_requires=[
-        'keyring'
+        'keyring',
+        'PyCrypto',
+        'six'
     ],
     entry_points={
         'keyring backends': [
